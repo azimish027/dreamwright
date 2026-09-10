@@ -608,8 +608,9 @@ window.IPApp = (function () {
       document.getElementById('acc_login').addEventListener('click', openAccountDlg);
       return;
     }
-    const ini = esc((u.user || '?').slice(0, 1).toUpperCase());
-    wrap.innerHTML = '<button class="acctbtn accon" id="acc_open" title="账号与云端设置"><span class="avatar">' + ini + '</span><span>' + esc(u.user) + '</span></button>' +
+    const ini = u.anon ? '匿' : esc((u.user || '?').slice(0, 1).toUpperCase());
+    const disp = u.anon ? ('匿名 #' + (u.user || '').replace('anon_', '')) : u.user;
+    wrap.innerHTML = '<button class="acctbtn accon" id="acc_open" title="账号与云端设置"><span class="avatar">' + ini + '</span><span>' + esc(disp) + '</span></button>' +
       '<button class="acctbtn avabtn" id="acc_out" title="登出（数据保留在本机）"><span class="ic16">' + X.out + '</span></button>';
     document.getElementById('acc_open').addEventListener('click', openAccountDlg);
     document.getElementById('acc_out').addEventListener('click', () => {
@@ -629,8 +630,9 @@ window.IPApp = (function () {
     const c = IPAuth.cfg();
     dlg.innerHTML = authed
       ? '<h3>账号 · ' + esc(u.user) + '</h3>' +
-        '<div class="field" style="font-size:12px;color:var(--tx2)">当前账号：<b>' + esc(u.user) + '</b>　模式：' + (IPAuth.isCloud() ? '云' : '演示（本地）') +
-        '<div style="color:var(--tx3);margin-top:4px">登出后可继续用，数据保留在本机。</div></div>' +
+        '<div class="field" style="font-size:12px;color:var(--tx2)">当前账号：<b>' + esc(u.anon ? ('匿名 #' + (u.user || '').replace('anon_', '')) : u.user) + '</b>　模式：' + (IPAuth.isCloud() ? '云' : '演示（本地）') +
+        '<div style="color:var(--tx3);margin-top:4px">登出后可继续用，数据保留在本机。</div>' +
+        '<div style="color:var(--tx3);margin-top:6px">AI 额度：今日已用 <b style="color:var(--ac)">' + IPAuth.aiQuota().used + '</b> / ' + IPAuth.aiQuota().total + ' 次</div></div>' +
         '<div class="field" style="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px" id="cf_syncbox">' +
         '<div style="font-size:11px;color:var(--tx3);margin-bottom:4px">同步状态（点「立即同步」查看最新结果）：</div>' +
         '<div id="cf_syncmsg" style="font-size:12px;line-height:1.6;word-break:break-all"></div></div>' +
@@ -639,6 +641,7 @@ window.IPApp = (function () {
         '<input id="cf_sec" placeholder="访问密钥 ACCESS_KEY（部署时自己设的那串）" value="' + esc(c.secret || '') + '" style="margin-top:6px"></div>' +
         '<div class="btns"><button class="no" id="cf_syncnow">立即同步</button><button class="no" id="cf_save">保存配置</button><button class="no" id="acc_logout">登出</button><button class="ok" id="acc_close">完成</button></div>'
       : '<h3>登录 / 注册</h3>' +
+        '<button class="anonbtn" id="au_anon">✦ 一键匿名体验（免注册，立即解锁 AI 额度 + 云端同步）</button>' +
         '<div class="autabs"><button class="autab on" id="tab_code">邮箱验证码</button><button class="autab" id="tab_pass">用户名密码</button></div>' +
         '<div id="m_code">' +
           '<div class="field"><label>邮箱</label><input id="au_email" placeholder="you@example.com" autocomplete="email"></div>' +
@@ -749,6 +752,14 @@ window.IPApp = (function () {
         afterLogin();
       };
 
+      document.getElementById('au_anon').addEventListener('click', () => {
+        IPAuth.anonLogin();
+        ov.remove();
+        renderAccount(); renderSyncChip();
+        IPSync.afterLogin().then(() => { renderSyncChip(); IPNotice.refresh(); });
+        toast('已匿名登录～ 每天 20 次 AI 对话额度已解锁，数据也能多端同步啦');
+        if (window.IPUI) IPUI.burst('heart', '欢迎来到筑梦之境');
+      });
       doBtn.addEventListener('click', exec);
       gologin.addEventListener('click', () => { mode2 = mode2 === 'reg' ? 'login' : 'reg'; syncUI(); });
       tabCode.addEventListener('click', () => { authMode = 'code'; syncUI(); });

@@ -67,6 +67,9 @@ input,textarea,select{font-family:inherit;color:var(--tx)}
 .topstat .saved.on{opacity:1}
 .syncchip{cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:11px;color:var(--tx3)}
 .syncchip:hover{border-color:var(--ac2)}
+.anonbtn{display:block;width:100%;margin:2px 0 14px;padding:11px 14px;border-radius:12px;border:1.5px solid var(--ac);background:linear-gradient(135deg,rgba(110,114,255,.18),rgba(127,212,255,.12));color:#E6E8FF;font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:transform .12s,box-shadow .2s;box-shadow:0 6px 18px rgba(110,114,255,.22)}
+.anonbtn:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(110,114,255,.34)}
+.anonbtn:active{transform:scale(.985)}
 .acctbtn{height:28px;padding:0 12px;border-radius:999px;background:var(--bg3);border:1px solid var(--line);color:var(--tx2);font-size:12px;display:inline-flex;align-items:center}
 .acctbtn:hover{border-color:var(--ac2);color:var(--ac)}
 .acctbtn.accon{border-color:var(--ac2);color:var(--ac);background:rgba(110,114,255,.1)}

@@ -156,6 +156,7 @@ const IPAuth = (function () {
   function load() {
     const u = jget(USER_KEY, null);
     if (u) {
+      if (u.anon) { session = u; return session; } // 匿名用户：本地生成、本地信任，免 token 校验
       // demo 校验 token
       if (!isCloud()) {
         if (demoAuthed(u.token) === u.user) session = u;
@@ -184,6 +185,33 @@ const IPAuth = (function () {
     return { ok: true, user: r.user };
   }
   function logout() { saveSession(null); }
+
+  // ---- 匿名登录（v14：一键体验，零配置）----
+  function anonLogin() {
+    const id = 'anon_' + Math.random().toString(36).slice(2, 8);
+    const token = 'anon_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    saveSession({ user: id, token, anon: true });
+    return { ok: true, user: id };
+  }
+
+  // ---- AI 每日额度（v14：本地计数原型；接 CloudBase 后由服务端下发）----
+  const AI_KEY = 'ip2auth:aiused';
+  const AI_QUOTA = { guest: 0, anon: 20, user: 50 }; // 每日调用上限（次）
+  function todayStr() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function aiRead() {
+    const v = jget(AI_KEY, null);
+    if (!v || v.date !== todayStr()) { const nw = { date: todayStr(), count: 0 }; jset(AI_KEY, nw); return nw; }
+    return v;
+  }
+  function aiPlan() { const u = session; if (!u) return 'guest'; return u.anon ? 'anon' : 'user'; }
+  function aiQuota() {
+    const plan = aiPlan();
+    const total = AI_QUOTA[plan] || 0;
+    const used = aiRead().count;
+    return { plan, total, used, left: Math.max(0, total - used) };
+  }
+  function canUseAI() { return aiQuota().left > 0; }
+  function incrAI() { const v = aiRead(); v.count++; jset(AI_KEY, v); return v.count; }
 
   // ---- 真实云调用（HTTP 云函数）----
   async function cloudCall(fn, payload) {
@@ -253,9 +281,10 @@ const IPAuth = (function () {
   }
 
   return {
-    load, user, register, login, logout,
+    load, user, register, login, logout, anonLogin,
     sendCode, loginCode, registerCode, checkInvite,
     cfg, setCfg, isCloud, mode, saveSession,
-    apiPull, apiPush
+    apiPull, apiPush,
+    aiQuota, canUseAI, incrAI, aiPlan
   };
 })();

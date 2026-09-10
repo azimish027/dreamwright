@@ -214,6 +214,7 @@ const IPAI = (function () {
           throw new Error(m);
         });
       }
+      IPAuth.incrAI(); // 响应正常才记一次额度（401 等失败已在上方 return，不会走到这）
       const ct = (r.headers.get('content-type') || '');
       const msgsEl = panel.querySelector('.aimsgs');
       const sink = msgsEl ? msgsEl.querySelector('.aimrow.bot:last-child .aimtxt') : null;
