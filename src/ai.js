@@ -162,7 +162,7 @@ const IPAI = (function () {
     return Object.values(hits).sort((a, b) => b.score - a.score).slice(0, 8).map(x => x.h);
   }
 
-  function ask(qRaw) {
+  async function ask(qRaw) {
     const q = (qRaw || '').trim();
     if (!q) return;
     if (!curThread) { const t = IP2.addAiThread(q.slice(0, 18)); curThread = t.id; }
@@ -186,6 +186,13 @@ const IPAI = (function () {
     }
 
     // AI 模式：拼上下文提问（v13.5：SSE 流式，逐字出现）
+    const allowed = await IPAuth.canUseAIAsync();
+    if (!allowed) {
+      IP2.aiPush(curThread, { role: 'ai', text: '今天的 AI 对话额度已用完（每日上限 ' + (IPAuth.aiQuota().total || 0) + ' 次）。明天会重置，或在「账户」里连接云端账号后额度由服务端统一管理。', refs: [] });
+      render();
+      if (window.toast) toast('今日 AI 额度已用完，明天再来吧～');
+      return;
+    }
     IP2.aiPush(curThread, { role: 'ai', text: '', refs: [] });
     render();
     const c = cfg();
@@ -214,7 +221,7 @@ const IPAI = (function () {
           throw new Error(m);
         });
       }
-      IPAuth.incrAI(); // 响应正常才记一次额度（401 等失败已在上方 return，不会走到这）
+      IPAuth.incrAIAsync(); // 响应正常才记一次额度（401 等失败已在上方 return，不会走到这）
       const ct = (r.headers.get('content-type') || '');
       const msgsEl = panel.querySelector('.aimsgs');
       const sink = msgsEl ? msgsEl.querySelector('.aimrow.bot:last-child .aimtxt') : null;

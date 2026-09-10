@@ -619,6 +619,30 @@ window.IPApp = (function () {
     });
   }
 
+  function refreshCloudStat(statId, quotaId) {
+    const statEl = statId && document.getElementById(statId);
+    const quotaEl = quotaId && document.getElementById(quotaId);
+    if (statEl) {
+      if (!(window.IPCloud && IPCloud.available())) statEl.innerHTML = '<span style="color:var(--tx3)">未连接云端（演示模式，数据存本机）</span>';
+      else { const s = IPCloud.readyState(); statEl.innerHTML = '<span style="color:var(--ok)">✓ 已连 CloudBase · ' + esc(s.envId || '') + ' · uid…' + esc((s.uid || '').slice(-6)) + '</span>'; }
+    }
+    if (quotaEl) {
+      if (!(window.IPCloud && IPCloud.available())) { quotaEl.textContent = IPAuth.aiQuota().used + ' / ' + IPAuth.aiQuota().total; return; }
+      IPAuth.aiQuotaAsync().then(q => { quotaEl.textContent = q.used + ' / ' + q.total; }).catch(() => { quotaEl.textContent = IPAuth.aiQuota().used + ' / ' + IPAuth.aiQuota().total; });
+    }
+  }
+  function cfConnect(env, statId) {
+    const id = (env || '').trim();
+    const e = statId && document.getElementById(statId);
+    if (!id) { if (e) e.innerHTML = '<span style="color:var(--err)">请先填环境 ID</span>'; return; }
+    IPAuth.setCloudEnv(id);
+    if (e) e.textContent = '连接中…';
+    (window.IPCloud ? IPCloud.init(id) : Promise.reject(new Error('CloudBase 未加载'))).then(() => {
+      refreshCloudStat(statId);
+      if (IPAuth.user() && IPAuth.user().anon) IPSync.afterLogin().then(() => renderSyncChip());
+      toast('已连接 CloudBase 云端');
+    }).catch(err => { if (e) e.innerHTML = '<span style="color:var(--err)">连接失败：' + esc((err && err.message) || err) + '</span>'; });
+  }
   function openAccountDlg() {
     const u = IPAuth.user();
     const old = document.getElementById('accdlg');
@@ -636,12 +660,22 @@ window.IPApp = (function () {
         '<div class="field" style="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px" id="cf_syncbox">' +
         '<div style="font-size:11px;color:var(--tx3);margin-bottom:4px">同步状态（点「立即同步」查看最新结果）：</div>' +
         '<div id="cf_syncmsg" style="font-size:12px;line-height:1.6;word-break:break-all"></div></div>' +
+        '<div class="field" style="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px">' +
+        '<div style="font-size:11px;color:var(--tx3);margin-bottom:4px">CloudBase 云端：匿名登录已自动连接；也可手动填环境 ID 连接。</div>' +
+        '<div style="display:flex;gap:6px;align-items:center"><input id="cf_env" placeholder="CloudBase 环境 ID，如 wml2007-xxxx" value="' + esc(IPAuth.cloudEnv() || '') + '" style="flex:1"><button class="no" id="cf_connect" style="white-space:nowrap">连接云端</button></div>' +
+        '<div id="cf_cloudstat" style="font-size:12px;margin-top:4px"></div>' +
+        '<div style="color:var(--tx3);margin-top:6px">AI 额度：今日已用 <b style="color:var(--ac)" id="cf_quota">…</b> 次</div></div>' +
+        '<details class="field"><summary style="cursor:pointer;color:var(--tx2);font-size:12px">高级 · 旧版 HTTP 网关配置</summary>' +
         '<div class="field"><label>云端配置（按 cloud/DEPLOY.md 部署后填写；留空则使用演示后端）</label>' +
         '<input id="cf_base" placeholder="云函数访问地址（部署完成后显示的那条 URL）" value="' + esc(c.fnUrl || c.httpBase || '') + '">' +
-        '<input id="cf_sec" placeholder="访问密钥 ACCESS_KEY（部署时自己设的那串）" value="' + esc(c.secret || '') + '" style="margin-top:6px"></div>' +
+        '<input id="cf_sec" placeholder="访问密钥 ACCESS_KEY（部署时自己设的那串）" value="' + esc(c.secret || '') + '" style="margin-top:6px"></div></details>' +
         '<div class="btns"><button class="no" id="cf_syncnow">立即同步</button><button class="no" id="cf_save">保存配置</button><button class="no" id="acc_logout">登出</button><button class="ok" id="acc_close">完成</button></div>'
       : '<h3>登录 / 注册</h3>' +
         '<button class="anonbtn" id="au_anon">✦ 一键匿名体验（免注册，立即解锁 AI 额度 + 云端同步）</button>' +
+        '<div class="field" style="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px">' +
+        '<div style="font-size:11px;color:var(--tx3);margin-bottom:4px">已有 CloudBase？先填环境 ID 连接（匿名登录后数据直接进云）：</div>' +
+        '<div style="display:flex;gap:6px;align-items:center"><input id="cf_env2" placeholder="CloudBase 环境 ID" style="flex:1"><button class="no" id="cf_connect2" style="white-space:nowrap">连接</button></div>' +
+        '<div id="cf_cloudstat2" style="font-size:12px;margin-top:4px"></div></div>' +
         '<div class="autabs"><button class="autab on" id="tab_code">邮箱验证码</button><button class="autab" id="tab_pass">用户名密码</button></div>' +
         '<div id="m_code">' +
           '<div class="field"><label>邮箱</label><input id="au_email" placeholder="you@example.com" autocomplete="email"></div>' +
@@ -752,14 +786,19 @@ window.IPApp = (function () {
         afterLogin();
       };
 
-      document.getElementById('au_anon').addEventListener('click', () => {
-        IPAuth.anonLogin();
+      document.getElementById('au_anon').addEventListener('click', async () => {
+        const r = await IPAuth.anonLogin();
         ov.remove();
         renderAccount(); renderSyncChip();
         IPSync.afterLogin().then(() => { renderSyncChip(); IPNotice.refresh(); });
-        toast('已匿名登录～ 每天 20 次 AI 对话额度已解锁，数据也能多端同步啦');
+        if (r && r.cloud) toast('已连 CloudBase 云端（匿名）～ 数据自动同步，每日 20 次 AI 额度已解锁');
+        else toast('已匿名登录～ 每天 20 次 AI 对话额度已解锁（未连云端，数据存本机）');
         if (window.IPUI) IPUI.burst('heart', '欢迎来到筑梦之境');
       });
+      const cfEnv2 = document.getElementById('cf_env2');
+      const cfConn2 = document.getElementById('cf_connect2');
+      if (cfConn2) cfConn2.addEventListener('click', () => cfConnect(cfEnv2 && cfEnv2.value, 'cf_cloudstat2'));
+      refreshCloudStat('cf_cloudstat2');
       doBtn.addEventListener('click', exec);
       gologin.addEventListener('click', () => { mode2 = mode2 === 'reg' ? 'login' : 'reg'; syncUI(); });
       tabCode.addEventListener('click', () => { authMode = 'code'; syncUI(); });
@@ -781,6 +820,9 @@ window.IPApp = (function () {
         else syncMsg.textContent = '尚未成功同步过。点「立即同步」重试。';
       };
       showSync();
+      refreshCloudStat('cf_cloudstat', 'cf_quota');
+      const cfConn = document.getElementById('cf_connect');
+      if (cfConn) cfConn.addEventListener('click', () => cfConnect(document.getElementById('cf_env') && document.getElementById('cf_env').value, 'cf_cloudstat'));
       document.getElementById('cf_syncnow').addEventListener('click', () => {
         syncMsg.textContent = '⟳ 同步中…';
         IPSync.syncNow().then(() => {

@@ -120,6 +120,7 @@ const IPSync = (function () {
   function flush() {
     const u = IPAuth.user();
     if (!u) return Promise.resolve({ ok: true });
+    status.mode = (window.IPAuth && IPAuth.isCloud()) ? 'cloud' : 'demo';
     // 防并发
     if (status.in === 'push' || status.in === 'pull') return Promise.resolve({ ok: true, busy: true });
     const { ops } = diffOps(meta.lastKnown);
@@ -154,6 +155,7 @@ const IPSync = (function () {
   function pullNow() {
     const u = IPAuth.user();
     if (!u) return Promise.resolve({ err: '未登录' });
+    status.mode = (window.IPAuth && IPAuth.isCloud()) ? 'cloud' : 'demo';
     if (status.in === 'push' || status.in === 'pull') return Promise.resolve({ ok: true, busy: true });
     // 推送本地 → 再拉（保证已是最新）
     status.in = 'pull';

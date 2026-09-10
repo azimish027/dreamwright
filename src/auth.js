@@ -2,6 +2,11 @@
 const IPAuth = (function () {
   const CFG_KEY = 'ip2auth:cfg';
   const USER_KEY = 'ip2auth:user';
+  const CLOUD_ENV_KEY = 'ip2auth:cloudenv';
+  // CloudBase 环境 ID：构建时由 build.js 注入（/*__CLOUD_ENV__*/）；运行期可在登录弹窗里改，存 localStorage 覆盖。
+  const CLOUD_ENV = '/*__CLOUD_ENV__*/';
+  function cloudEnv() { try { const v = localStorage.getItem(CLOUD_ENV_KEY); if (v) return v; } catch (e) {} return CLOUD_ENV; }
+  function setCloudEnv(id) { try { if (id) localStorage.setItem(CLOUD_ENV_KEY, id); else localStorage.removeItem(CLOUD_ENV_KEY); } catch (e) {} }
 
   // ---- 演示后端（localStorage 模拟远端，无网可跑通全流程）----
   const DEMO_USERS = 'ip2demo:users';   // [{user, salt, hash}]
@@ -147,7 +152,10 @@ const IPAuth = (function () {
     jset(CFG_KEY, cur);
     return cur;
   }
-  function isCloud() { const c = cfg(); return !!(c.fnUrl || c.httpBase || (c.envId && c.secret)); }
+  function isCloud() {
+    if (window.IPCloud && IPCloud.available()) return true;     // 真实 CloudBase 已连
+    const c = cfg(); return !!(c.fnUrl || c.httpBase || (c.envId && c.secret)); // 旧版 HTTP 网关
+  }
   function mode() { return isCloud() ? 'cloud' : 'demo'; }
 
   // ---- 当前会话 ----
@@ -184,14 +192,42 @@ const IPAuth = (function () {
     saveSession({ user: r.user, token: r.token });
     return { ok: true, user: r.user };
   }
-  function logout() { saveSession(null); }
+  function logout() {
+    if (window.IPCloud && IPCloud.available()) { try { IPCloud.signOut(); } catch (e) {} }
+    saveSession(null);
+  }
 
-  // ---- 匿名登录（v14：一键体验，零配置）----
-  function anonLogin() {
+  // ---- 匿名登录（v14.1：优先连真实 CloudBase；连不上则本地匿名，仍可继续用）----
+  async function anonLogin() {
+    if (window.IPCloud && IPCloud.available()) {
+      try {
+        const cuid = await IPCloud.anonLogin();
+        const id = 'anon_' + cuid.slice(-6);
+        const token = cuid; // 云端 uid 即 token
+        saveSession({ user: id, token, anon: true, uid: cuid, cloud: true });
+        return { ok: true, user: id, cloud: true, uid: cuid };
+      } catch (e) {
+        const id = 'anon_' + Math.random().toString(36).slice(2, 8);
+        saveSession({ user: id, token: 'anon_' + Math.random().toString(36).slice(2) + Date.now().toString(36), anon: true, cloud: false });
+        return { ok: true, user: id, cloud: false };
+      }
+    }
     const id = 'anon_' + Math.random().toString(36).slice(2, 8);
     const token = 'anon_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    saveSession({ user: id, token, anon: true });
-    return { ok: true, user: id };
+    saveSession({ user: id, token, anon: true, cloud: false });
+    return { ok: true, user: id, cloud: false };
+  }
+  // 已存在匿名会话：若云端可用，尝试恢复 uid（刷新后 token 仍在 localStorage，但 IPCloud 需重新登录）
+  async function refreshAnon() {
+    const u = session;
+    if (!u || !u.anon) return false;
+    if (!(window.IPCloud && IPCloud.available())) return false;
+    try {
+      const cuid = await IPCloud.anonLogin();
+      u.uid = cuid; u.cloud = true; u.token = cuid;
+      saveSession(u);
+      return true;
+    } catch (e) { return false; }
   }
 
   // ---- AI 每日额度（v14：本地计数原型；接 CloudBase 后由服务端下发）----
@@ -212,6 +248,31 @@ const IPAuth = (function () {
   }
   function canUseAI() { return aiQuota().left > 0; }
   function incrAI() { const v = aiRead(); v.count++; jset(AI_KEY, v); return v.count; }
+
+  // v14.1：服务端额度（CloudBase）——云端优先，否则本地计数
+  async function aiQuotaAsync() {
+    const plan = aiPlan();
+    const total = AI_QUOTA[plan] || 0;
+    if (window.IPCloud && IPCloud.available() && session && session.uid) {
+      const today = todayStr();
+      let used = 0;
+      try { const q = await IPCloud.quotaGet(today); used = (typeof q === 'number') ? q : 0; } catch (e) {}
+      return { plan, total, used, left: Math.max(0, total - used) };
+    }
+    const used = aiRead().count;
+    return { plan, total, used, left: Math.max(0, total - used) };
+  }
+  async function canUseAIAsync() {
+    const q = await aiQuotaAsync();
+    return q.left > 0;
+  }
+  async function incrAIAsync() {
+    const q = await aiQuotaAsync();
+    if (window.IPCloud && IPCloud.available() && session && session.uid) {
+      try { await IPCloud.quotaSet(todayStr(), q.used + 1); return q.used + 1; } catch (e) {}
+    }
+    const v = aiRead(); v.count++; jset(AI_KEY, v); return v.count;
+  }
 
   // ---- 真实云调用（HTTP 云函数）----
   async function cloudCall(fn, payload) {
@@ -258,6 +319,12 @@ const IPAuth = (function () {
 
   // 同步数据接口（供 sync.js 使用）：统一返回 Promise
   function apiPull(token) {
+    if (window.IPCloud && IPCloud.available() && session && session.uid) {
+      return IPCloud.dataPull().then(recs => {
+        const arr = (recs || []).map(r => ({ rid: r.rid, cat: r.cat, obj: r.deleted ? null : r.obj, updatedAt: Date.now(), deleted: !!r.deleted }));
+        return { ok: true, user: session.user, recs: arr, serverTime: Date.now() };
+      }).catch(e => ({ err: (e && e.message) || String(e) }));
+    }
     if (isCloud()) return cloudCall('sync', { action: 'pull', token });
     const user = demoAuthed(token);
     if (!user) return Promise.resolve({ err: '会话失效' });
@@ -270,6 +337,13 @@ const IPAuth = (function () {
     return Promise.resolve({ ok: true, user, recs: arr, serverTime: Date.now() });
   }
   function apiPush(token, ops) {
+    if (window.IPCloud && IPCloud.available() && session && session.uid) {
+      const jobs = (ops || []).map(op => op.op === 'del'
+        ? IPCloud.dataDelete(op.cat, op.rid)
+        : IPCloud.dataPut(op.cat, op.rid, op.obj, false));
+      return Promise.all(jobs).then(() => ({ ok: true, serverTime: Date.now() }))
+        .catch(e => ({ err: (e && e.message) || String(e) }));
+    }
     if (isCloud()) return cloudCall('sync', { action: 'push', token, ops });
     const userId = demoAuthed(token);
     if (!userId) return Promise.resolve({ err: '会话失效' });
@@ -281,10 +355,11 @@ const IPAuth = (function () {
   }
 
   return {
-    load, user, register, login, logout, anonLogin,
+    load, user, register, login, logout, anonLogin, refreshAnon,
     sendCode, loginCode, registerCode, checkInvite,
-    cfg, setCfg, isCloud, mode, saveSession,
+    cfg, setCfg, isCloud, mode, saveSession, cloudEnv, setCloudEnv,
     apiPull, apiPush,
-    aiQuota, canUseAI, incrAI, aiPlan
+    aiQuota, canUseAI, incrAI, aiPlan,
+    aiQuotaAsync, canUseAIAsync, incrAIAsync
   };
 })();

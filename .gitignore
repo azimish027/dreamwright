@@ -16,3 +16,5 @@ shot.js
 smoke.js
 smoke_v3.js
 shots/
+deploy/
+node_modules/

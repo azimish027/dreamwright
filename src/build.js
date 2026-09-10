@@ -7,7 +7,7 @@ const files = [
   'tags.js', 'lines.js', 'search.js',
   'chapters.js', 'assets.js', 'float.js', 'board.js', 'ai.js',
   'projects.js', 'manage.js',
-  'auth.js', 'sync.js', 'onboard.js', 'notice.js', 'vn13.js',
+  'cloudbase.js', 'auth.js', 'sync.js', 'onboard.js', 'notice.js', 'vn13.js',
   'views.js', 'main.js'
 ];
 const out = path.join(__dirname, '..', '..', 'IP创作工作台-正式版.html');
@@ -96,6 +96,14 @@ if (!PUBLIC) {
   js = js.replace(PH, '{ baseURL: \'\', key: \'\', model: \'\' }');
   console.log('public build: no personal cfg');
 }
+// CloudBase 环境 ID 注入（非密，可公开；两种构建都注入，便于一键连接真实云端）
+let cloudEnv = '';
+try {
+  const myai = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tools', 'myai.local.json'), 'utf8'));
+  cloudEnv = myai.cloudEnv || '';
+} catch (e) {}
+js = js.split('/*__CLOUD_ENV__*/').join(JSON.stringify(cloudEnv));
+console.log('cloudEnv inject: ' + (cloudEnv || '(empty → 用户需在弹窗填写)'));
 const outPath = PUBLIC
   ? path.join(__dirname, '..', 'dist', 'IP创作工作台-开源版.html')
   : out;
