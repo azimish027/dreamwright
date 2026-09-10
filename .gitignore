@@ -1,0 +1,18 @@
+# 个人 AI 配置（含密钥，绝不入库）
+tools/myai.local.json
+
+# 本地构建产物（自用版含密钥）
+IP创作工作台-正式版.html
+../IP创作工作台-正式版.html
+
+# 临时/系统文件
+_cloud_raw.png
+Thumbs.db
+.DS_Store
+
+# 开发期测试脚本（本地截图/冒烟，依赖本机环境）
+ai_shot.js
+shot.js
+smoke.js
+smoke_v3.js
+shots/
