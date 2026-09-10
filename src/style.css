@@ -1257,25 +1257,55 @@ button svg.ic{pointer-events:none;display:block}
 .popmenu-item b{display:block;font-size:12.5px;color:var(--tx-1);font-weight:500}
 .popmenu-item span{display:block;font-size:11px;color:var(--tx-3);margin-top:2px}
 
-/* 新手引导 */
+/* 新手引导（v13.9 galgame 化：双描边 + 骑缝名牌 + 药丸钮 + 心形进度） */
 .tourov{position:fixed;inset:0;z-index:300}
-.tour-hole{position:fixed;border-radius:12px;display:none;pointer-events:none;
-  box-shadow:0 0 0 9999px rgba(8,9,14,.55),0 0 0 2px rgba(122,126,255,.95);
+.tour-hole{position:fixed;border-radius:14px;display:none;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(10,7,26,.62),0 0 0 2px rgba(255,184,232,.92),
+    0 0 0 5px rgba(255,255,255,.22),0 0 26px rgba(255,150,220,.45);
   transition:all .26s cubic-bezier(.4,0,.2,1)}
-.tour-card{position:fixed;width:340px;background:var(--bg-2);border:1px solid var(--bd-1);
-  border-radius:14px;padding:16px 18px 14px;box-shadow:0 22px 60px rgba(0,0,0,.6);z-index:301}
-.tour-step{font-size:11px;color:var(--ac);letter-spacing:.04em;margin-bottom:7px}
-.tour-t{font-size:15px;font-weight:600;color:var(--tx-1);margin-bottom:7px}
-.tour-b{font-size:12.5px;line-height:1.75;color:var(--tx-2)}
+.tour-card{position:fixed;width:340px;border:1.5px solid rgba(255,184,232,.55);
+  border-radius:16px;padding:24px 18px 14px;z-index:301;
+  box-shadow:inset 0 0 0 3.5px rgba(180,158,255,.26),inset 0 0 0 4.5px rgba(255,255,255,.30),0 22px 60px rgba(0,0,0,.6),0 0 26px rgba(255,184,232,.28);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 17C4.6 12.4 1.8 9.2 1.8 6.4 1.8 4 3.7 2.2 6 2.2c1.6 0 3.1.9 4 2.4.9-1.5 2.4-2.4 4-2.4 2.3 0 4.2 1.8 4.2 4.2 0 2.8-2.8 6-8.2 10.6z' fill='%23ffb8e8' stroke='%23ffffff' stroke-opacity='.75' stroke-width='1'/%3E%3C/svg%3E") no-repeat 10px 5px / 14px 14px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 17C4.6 12.4 1.8 9.2 1.8 6.4 1.8 4 3.7 2.2 6 2.2c1.6 0 3.1.9 4 2.4.9-1.5 2.4-2.4 4-2.4 2.3 0 4.2 1.8 4.2 4.2 0 2.8-2.8 6-8.2 10.6z' fill='%23ffb8e8' stroke='%23ffffff' stroke-opacity='.75' stroke-width='1'/%3E%3C/svg%3E") no-repeat calc(100% - 10px) 5px / 14px 14px,
+    linear-gradient(180deg,rgba(180,158,255,.18),rgba(180,158,255,.07)),
+    linear-gradient(180deg,rgba(16,10,36,.94),rgba(12,8,28,.93));
+  animation:tourfade .3s cubic-bezier(.4,0,.2,1)}
+@keyframes tourfade{from{opacity:0;filter:blur(4px)}to{opacity:1;filter:blur(0)}}
+.tour-badge{position:absolute;top:-14px;right:16px;display:inline-flex;align-items:center;
+  background:linear-gradient(96deg,#ff9ed6,#b49eff);color:#fff;padding:3px 14px;border-radius:999px;
+  border:2px solid rgba(255,255,255,.85);box-shadow:0 3px 10px rgba(255,140,210,.45),inset 0 -2px 0 rgba(140,60,160,.3);
+  font-size:11px;font-weight:700;letter-spacing:.14em;font-family:'MM Cute','IP Sans',sans-serif}
+.tour-badge::before{content:'✦';font-size:9px;margin-right:5px;opacity:.92}
+.tour-badge::after{content:'✦';font-size:9px;margin-left:5px;opacity:.92}
+.tour-step{font-size:11px;color:#ffb8e8;letter-spacing:.08em;margin-bottom:7px;
+  font-family:'MM Pixel','IP Sans',monospace}
+.tour-t{font-size:16px;font-weight:700;color:#fff;margin-bottom:7px;letter-spacing:.02em;
+  font-family:'MM Cute','IP Sans',sans-serif;text-shadow:0 1px 2px rgba(90,40,140,.5)}
+.tour-b{font-size:12.5px;line-height:1.8;color:var(--tx-2)}
 .tour-ft{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px}
-.tour-dots{display:flex;gap:5px;align-items:center}
-.tour-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.16);display:block}
-.tour-dots i.on{background:var(--ac);width:16px;border-radius:3px}
-.tour-dots i.done{background:rgba(110,114,255,.5)}
-.tour-act{display:flex;gap:7px;align-items:center}
+.tour-dots{display:flex;gap:6px;align-items:center}
+.tour-dots i{width:13px;height:12px;display:block;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 19'%3E%3Cpath d='M10 17C4.6 12.4 1.8 9.2 1.8 6.4 1.8 4 3.7 2.2 6 2.2c1.6 0 3.1.9 4 2.4.9-1.5 2.4-2.4 4-2.4 2.3 0 4.2 1.8 4.2 4.2 0 2.8-2.8 6-8.2 10.6z' fill='none' stroke='rgba(255,255,255,.34)' stroke-width='2'/%3E%3C/svg%3E") no-repeat center/contain;
+  transition:all .22s}
+.tour-dots i.on{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 19'%3E%3Cpath d='M10 17C4.6 12.4 1.8 9.2 1.8 6.4 1.8 4 3.7 2.2 6 2.2c1.6 0 3.1.9 4 2.4.9-1.5 2.4-2.4 4-2.4 2.3 0 4.2 1.8 4.2 4.2 0 2.8-2.8 6-8.2 10.6z' fill='%23ffb8e8' stroke='%23ffffff' stroke-opacity='.8' stroke-width='1.2'/%3E%3C/svg%3E") no-repeat center/contain;
+  transform:scale(1.25);filter:drop-shadow(0 0 6px rgba(255,150,220,.85))}
+.tour-dots i.done{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 19'%3E%3Cpath d='M10 17C4.6 12.4 1.8 9.2 1.8 6.4 1.8 4 3.7 2.2 6 2.2c1.6 0 3.1.9 4 2.4.9-1.5 2.4-2.4 4-2.4 2.3 0 4.2 1.8 4.2 4.2 0 2.8-2.8 6-8.2 10.6z' fill='%23b49eff' stroke-opacity='0'/%3E%3C/svg%3E") no-repeat center/contain;opacity:.8}
+.tour-act{display:flex;gap:8px;align-items:center}
+#tour_prev{border-radius:999px;padding:6px 15px;font-size:12px;font-weight:600;cursor:pointer;
+  border:1.5px solid rgba(180,158,255,.55);background:rgba(46,34,88,.55);color:#d8ccff}
+#tour_prev:hover{border-color:rgba(255,184,232,.8);color:#fff;background:rgba(64,48,118,.68)}
+#tour_next{border-radius:999px;padding:6px 17px;font-size:12px;font-weight:700;cursor:pointer;
+  background:linear-gradient(180deg,#ff9ed6,#c08cff);border:2px solid rgba(255,255,255,.85);color:#fff;
+  text-shadow:0 1px 2px rgba(140,60,160,.4);
+  box-shadow:0 4px 14px rgba(255,140,210,.4),inset 0 -3px 0 rgba(140,60,160,.35)}
+#tour_next:hover{filter:brightness(1.06);transform:translateY(-1px);
+  box-shadow:0 7px 18px rgba(255,140,210,.5),inset 0 -3px 0 rgba(140,60,160,.35)}
+#tour_next::before{content:'✦ ';font-size:.85em;opacity:.95}
 .tour-skip{background:transparent;border:0;color:var(--tx-3);font-size:11.5px;cursor:pointer;
   padding:4px 6px;border-radius:6px}
-.tour-skip:hover{color:var(--tx-2);background:rgba(255,255,255,.06)}
+.tour-skip:hover{color:#ffb8e8;background:rgba(255,184,232,.08)}
 
 /* 更新日志 */
 .dlg-narrow{max-width:400px}

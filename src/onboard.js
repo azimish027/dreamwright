@@ -2,11 +2,22 @@
 const IPOnboard = (function () {
   const TOUR_KEY = 'ipStudioP2:tour';
   const LOG_KEY = 'ipStudioP2:logseen';
-  const VERSION = 'v9';
+  const ONB_KEY = 'ipStudioP2:onboarded';
+  const VERSION = 'v13';
 
   const LOGS = [
     {
-      v: 'v6', d: '2026-09-10', tag: '本次',
+      v: 'v13', d: '2026-09-11', tag: '本次',
+      items: [
+        'galgame 式标题画面：CONTINUE / NEW GAME / EXTRA，章节过场与控制条',
+        'AI 全面接入：聊天气泡 + 梦梦表情包 + 流式回答，通用平台化（Key 自己配）',
+        '新手引导升级：新人第一次进入必须走完引导，内容覆盖全部新功能',
+        '对话排版修正：表情包独立展示不变形，气泡宽度舒展',
+        '开源版与正式版双版本构建，GitHub 仓库同步上线'
+      ]
+    },
+    {
+      v: 'v6', d: '2026-09-10', tag: '',
       items: [
         '全局排版层级化：标题 / 正文 / 数字三套字体分层，字号全部抬到可读线以上',
         '剩余组件补完：标记子条目容器、小按钮、搜索框与下拉、切换标签全部统一梦幻风',
@@ -64,7 +75,7 @@ const IPOnboard = (function () {
   const STEPS = [
     {
       title: '欢迎来到筑梦之境',
-      body: '接下来 6 步带你认全核心入口，十几秒就够。随时可跳过，之后在右上角 ? 里能重看。'
+      body: '第一次来，先花十几秒认全入口——这份引导走完才能开始，不会太久。之后在右上角 ? 里随时能重看。'
     },
     {
       sel: '.navitem[data-k="projects"]', goto: 'projects',
@@ -78,8 +89,8 @@ const IPOnboard = (function () {
     },
     {
       sel: '#aibtn',
-      title: 'AI：问你的作品，也查逻辑漏洞',
-      body: '可以问「某某在哪几章出现过」，也能跑一次逻辑体检，把没回收的伏笔、零出场的人物列出来。不填 Key 也能用本地检索。'
+      title: 'AI 梦梦：问你的作品',
+      body: '可以闲聊、问「某某在哪几章出现过」，也能跑一次逻辑体检，把没回收的伏笔、零出场的人物列出来。她还会发贴纸。在设置页填好 API 就能聊。'
     },
     {
       sel: '.navitem[data-k="data"]', goto: 'data',
@@ -87,18 +98,25 @@ const IPOnboard = (function () {
       body: '所有数据都在本机浏览器里。这里能导出成 JSON 文件，也能从文件恢复。换设备、清缓存前记得先导出一次。'
     },
     {
+      sel: '#setbtn',
+      title: '设置：一页管全部',
+      body: '外观、字体、AI 配置、云端同步都在这一页。想接自己的 AI，就在「AI 配置」里填接口地址和 Key。'
+    },
+    {
       title: '就这些，开始吧',
       body: '剩下的边用边摸索。右上角 ? 里随时能重看这份引导、查看更新日志。祝你写得顺手。'
     }
   ];
 
-  let idx = 0, ov = null;
+  let idx = 0, ov = null, forced = false;
 
   function version() { return VERSION; }
 
   // ---------------- 新手引导 ----------------
-  function start() {
+  // start(true) = 强制模式：不显示「跳过」，必须走完
+  function start(isForced) {
     idx = 0;
+    forced = !!isForced;
     build();
     show();
   }
@@ -111,6 +129,7 @@ const IPOnboard = (function () {
     ov.innerHTML =
       '<div class="tour-hole" id="tourhole"></div>' +
       '<div class="tour-card" id="tourcard">' +
+        '<div class="tour-badge">GUIDE</div>' +
         (typeof MASCOT !== 'undefined' && MASCOT.heart ? '<img class="tour-mascot" src="' + MASCOT.heart + '" alt="" draggable="false">' : '') +
         '<div class="tour-step" id="tourstep"></div>' +
         '<div class="tour-t" id="tourt"></div>' +
@@ -123,6 +142,7 @@ const IPOnboard = (function () {
         '</span></div>' +
       '</div>';
     document.body.appendChild(ov);
+    if (forced) document.getElementById('tour_skip').style.display = 'none';
     document.getElementById('tour_skip').addEventListener('click', () => finish());
     document.getElementById('tour_prev').addEventListener('click', () => { if (idx > 0) { idx--; show(); } });
     document.getElementById('tour_next').addEventListener('click', () => {
@@ -185,8 +205,10 @@ const IPOnboard = (function () {
 
   function finish(silent) {
     if (ov) { ov.remove(); ov = null; }
-    if (silent) return;
+    if (silent) return; // 静默清理：不动 forced、不写标记
+    forced = false;
     try { localStorage.setItem(TOUR_KEY, VERSION); } catch (e) { }
+    try { localStorage.setItem(ONB_KEY, '1'); } catch (e) { }
     try { IPApp.go('today'); } catch (e) { }
     if (window.IPNotice) {
       IPNotice.push({
@@ -229,6 +251,17 @@ const IPOnboard = (function () {
     try { localStorage.setItem(LOG_KEY, VERSION); } catch (e) { }
   }
 
+  // 新人（从未走完引导）→ 强制进入引导，走完才放行
+  function requireIfFresh() {
+    let done = '';
+    try { done = localStorage.getItem(ONB_KEY) || ''; } catch (e) { }
+    if (done) return;
+    setTimeout(() => {
+      if (document.getElementById('welcomex')) return; // 标题画面还开着时不抢
+      start(true);
+    }, 600);
+  }
+
   // 版本变化时，往消息中心推一条（不强制弹窗，避免打扰）
   function maybeAuto() {
     let seen = '';
@@ -242,7 +275,7 @@ const IPOnboard = (function () {
         IPNotice.push({
           id: 'log-' + VERSION, type: 'sys',
           title: '筑梦之境 更新到 ' + VERSION,
-          body: '这一版加入了新手引导、更新日志、消息中心，以及验证码登录与邀请码。',
+          body: '这一版上了 galgame 式标题画面与章节过场、AI 全面接入（梦梦 + 流式回答），新手引导也升级为新人必读。',
           action: 'changelog'
         });
         IPNotice.refresh();
@@ -250,5 +283,5 @@ const IPOnboard = (function () {
     }, 900);
   }
 
-  return { start, changelog, maybeAuto, version, seenTour };
+  return { start, changelog, maybeAuto, requireIfFresh, version, seenTour };
 })();

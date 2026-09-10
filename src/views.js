@@ -189,6 +189,7 @@ window.IPApp = (function () {
     applyPrefs();
     go('today');
     IPOnboard.maybeAuto();
+    IPOnboard.requireIfFresh(); // 新人第一次进入：强制走完新手引导
   }
 
   // ---------- 帮助下拉：引导 / 更新日志 / 关于 ----------
@@ -830,22 +831,24 @@ window.IPApp = (function () {
       '<div class="tscr-ver">筑梦之境 · 内容只保存在这台设备</div>';
     document.body.appendChild(ov);
     const close = (after) => { ov.remove(); go('projects'); if (after) setTimeout(after, 380); };
+    // 新人必读：任何一条进入主界面的路径，落地后都强制补一次引导
+    const guide = () => setTimeout(() => IPOnboard.requireIfFresh(), 420);
     ov.querySelectorAll('.tmi').forEach(m => m.addEventListener('click', () => {
       const a = m.dataset.a;
-      if (a === 'cont') close();
+      if (a === 'cont') close(guide);
       else if (a === 'new') close(() => {
-        const b = Array.from(document.querySelectorAll('.btn.primary')).find(x => (x.textContent || '').indexOf('新建') >= 0);
-        if (b) b.click();
+        setTimeout(guide, 250); // 先看引导，第 2 步正好教「+ 新建企划」
       });
       else if (a === 'seed') {
         IP2.resetAll(IP2SEED.build());
         ov.remove(); go('projects'); render();
         toast('已载入一套示例：一个企划 + 三页文稿。随便逛，随时可在「数据」页清掉。');
+        guide();
       }
       else if (a === 'tour') { ov.remove(); go('today'); setTimeout(() => IPOnboard.start(), 260); }
-      else if (a === 'sys') { ov.remove(); go('settings'); }
+      else if (a === 'sys') { ov.remove(); go('settings'); guide(); }
     }));
-    ov.querySelector('.tscr-bg').addEventListener('click', () => close());
+    ov.querySelector('.tscr-bg').addEventListener('click', () => close(guide));
   }
 
   return { init, go, reload, reloadTab, refreshContent, showTags, jumpAnno, jumpWord, jumpEntry, toast, renderAccount, renderSyncChip, showWelcome };
